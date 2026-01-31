@@ -2,9 +2,11 @@ package pge.solutions.task2ink.services;
 
 import lombok.extern.slf4j.Slf4j;
 import net.fortuna.ical4j.model.component.VToDo;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pge.solutions.task2ink.dto.AppConfig;
+import pge.solutions.task2ink.dto.NewTodoEvent;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,10 +19,12 @@ public class ToDoService {
 
     private final CalDavService calDavService;
     private final AppConfig appConfig;
+    private final ApplicationEventPublisher publisher;
 
-    public ToDoService(CalDavService calDavService, AppConfig appConfig) {
+    public ToDoService(CalDavService calDavService, AppConfig appConfig, ApplicationEventPublisher publisher) {
         this.calDavService = calDavService;
         this.appConfig = appConfig;
+        this.publisher = publisher;
     }
 
     @Scheduled(fixedRate = 5000)
@@ -35,6 +39,9 @@ public class ToDoService {
                 var diff = newTodos.stream().filter(todo -> !oldTodos.contains(todo)).toList();
                 if(!diff.isEmpty()){
                     log.info("Got {} new Todos from Server", diff.size());
+                    for (VToDo vToDo : diff) {
+                        publisher.publishEvent(new NewTodoEvent(vToDo));
+                    }
                     contents.put(i, newTodos);
                 } else {
                     log.debug("No new Todos from Server");

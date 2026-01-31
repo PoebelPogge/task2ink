@@ -1,0 +1,17 @@
+package pge.solutions.task2ink.services;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Service;
+import pge.solutions.task2ink.dto.NewTodoEvent;
+
+@Service
+@Slf4j
+public class PrinterHandlerService {
+
+    @EventListener
+    public void callPrinter(NewTodoEvent newTodoEvent){
+        var todo = newTodoEvent.toDo();
+        log.info("Going to print todo with id: {} and content '{}' via python.", todo.getUid().getValue(), todo.getSummary().getValue());
+    }
+}
