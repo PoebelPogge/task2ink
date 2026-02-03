@@ -1,7 +1,7 @@
 import sys
 from escpos.printer import Usb
 
-def print_todo(title):
+def print_todo(name, title):
     try:
         p = Usb(0x0519, 0x000b)
         p.profile.media_width_pixel = 384
@@ -9,6 +9,9 @@ def print_todo(title):
         p.set(bold=True)
         p.text("\n--- NEUES TODO ---\n")
         p.set(bold=False)
+        p.text("--- List: ")
+        p.text(f"{name}")
+        p.text(" ---\n\n")
         p.text(f"{title}\n\n")
         p.text("================================\n")
         p.set(bold=True)
@@ -26,6 +29,7 @@ if __name__ == "__main__":
     # Wenn ein Argument übergeben wurde (von Java), drucken wir es
     if len(sys.argv) > 1:
         task_title = sys.argv[1]
-        print_todo(task_title)
+        list_name = sys.argv[2]
+        print_todo(list_name, task_title)
     else:
         print("Kein Titel zum Drucken empfangen.")

@@ -13,7 +13,7 @@ import java.io.IOException;
 public class PrinterProcessService {
 
     @Async
-    public void printTask(VToDo todo){
+    public void printTask(String listName, VToDo todo){
         try {
             String pythonExecutable = "./venv/bin/python3";
             String scriptPath = "main.py";
@@ -22,7 +22,8 @@ public class PrinterProcessService {
             ProcessBuilder pb = new ProcessBuilder(
                     pythonExecutable,
                     scriptPath,
-                    todo.getSummary().getValue()
+                    todo.getSummary().getValue(),
+                    listName
             );
 
             pb.directory(workingDir);
