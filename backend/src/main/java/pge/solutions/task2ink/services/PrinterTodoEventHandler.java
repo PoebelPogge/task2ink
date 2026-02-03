@@ -7,11 +7,19 @@ import pge.solutions.task2ink.dto.NewTodoEvent;
 
 @Service
 @Slf4j
-public class PrinterHandlerService {
+public class PrinterTodoEventHandler {
+
+    private final PrinterProcessService printerProcessService;
+
+    public PrinterTodoEventHandler(PrinterProcessService printerProcessService) {
+        this.printerProcessService = printerProcessService;
+    }
+
 
     @EventListener
     public void callPrinter(NewTodoEvent newTodoEvent){
         var todo = newTodoEvent.toDo();
+        printerProcessService.printTask(todo);
         log.info("Going to print todo with id: {} and content '{}' via python.", todo.getUid().getValue(), todo.getSummary().getValue());
     }
 }
