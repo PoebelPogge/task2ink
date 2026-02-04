@@ -1,7 +1,12 @@
+import json
 import sys
 from escpos.printer import Usb
 
-def print_todo(name, title):
+def print_todo(payload):
+    data = json.loads(payload)
+    name = data.get('listName','Unknown')
+    summary = data.get('summary','')
+
     try:
         p = Usb(0x0519, 0x000b)
         p.profile.media_width_pixel = 384
@@ -12,7 +17,7 @@ def print_todo(name, title):
         p.text("--- List: ")
         p.text(f"{name}")
         p.text(" ---\n\n")
-        p.text(f"{title}\n\n")
+        p.text(f"{summary}\n\n")
         p.text("================================\n")
         p.set(bold=True)
         p.text("Scan when done:\n")
@@ -29,8 +34,7 @@ def print_todo(name, title):
 if __name__ == "__main__":
     # Wenn ein Argument übergeben wurde (von Java), drucken wir es
     if len(sys.argv) > 1:
-        task_title = sys.argv[1]
-        list_name = sys.argv[2]
-        print_todo(list_name, task_title)
+        payload = sys.argv[1]
+        print_todo(payload)
     else:
         print("Kein Titel zum Drucken empfangen.")

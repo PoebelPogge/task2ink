@@ -5,9 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import net.fortuna.ical4j.model.component.VToDo;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import pge.solutions.task2ink.dto.PrintableToDo;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -16,6 +19,7 @@ import java.util.concurrent.Executors;
 public class PrinterProcessService {
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Async
     public void printTask(String listName, VToDo todo){
@@ -24,16 +28,15 @@ public class PrinterProcessService {
             String scriptPath = "main.py";
             File workingDir = new File("./tools/printer-interface");
 
+            PrintableToDo printableToDo = new PrintableToDo(todo.getUid().getValue(),listName, todo.getSummary().getValue(),todo.getDescription().getValue(),todo.getDue().getDate().toInstant().atZone(ZoneId.systemDefault()).toOffsetDateTime());
+
             ProcessBuilder pb = new ProcessBuilder(
                     pythonExecutable,
                     scriptPath,
-                    todo.getSummary().getValue(),
-                    listName
+                    objectMapper.writeValueAsString(printableToDo)
             );
 
             pb.directory(workingDir);
-
-            //pb.inheritIO();
 
             Process process = pb.start();
 
