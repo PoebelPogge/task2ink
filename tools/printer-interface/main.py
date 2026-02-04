@@ -24,6 +24,7 @@ def print_todo(name, title):
         p.cut()
     except Exception as e:
         print(f"Druckfehler: {e}", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     # Wenn ein Argument übergeben wurde (von Java), drucken wir es
