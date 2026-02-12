@@ -73,7 +73,7 @@ public class CalDavService {
 
     private String extractWithRegex(String url) {
         // Muster für eine klassische UUID
-        Pattern uuidPattern = Pattern.compile("([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
+        Pattern uuidPattern = Pattern.compile(".*/([0-9a-zA-Z-]*).+");
         Matcher matcher = uuidPattern.matcher(url);
 
         if (matcher.find()) {
@@ -82,7 +82,7 @@ public class CalDavService {
         return null;
     }
 
-    private String getDisplayNameForUuid(String xmlResponse, String targetUuid) {
+    private String getDisplayNameForUuid(String xmlResponse, String targetId) {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setNamespaceAware(true);
@@ -101,17 +101,19 @@ public class CalDavService {
 
                 // Wir prüfen, ob die gesuchte UUID in der URL vorkommt
                 // Und wir nehmen nur den Eintrag OHNE .ics/.xml Endung für den sauberen Namen
-                if (href.contains(targetUuid) && !href.endsWith(".ics") && !href.endsWith(".xml")) {
+                if (href.contains(targetId) && !href.endsWith(".ics") && !href.endsWith(".xml")) {
 
                     // 2. Den Displaynamen aus diesem spezifischen Block extrahieren
                     NodeList displayNames = response.getElementsByTagNameNS("DAV:", "displayname");
                     if (displayNames.getLength() > 0) {
-                        return displayNames.item(0).getTextContent();
+                        String listName = displayNames.item(0).getTextContent();
+                        log.info("Got list with name: " + listName);
+                        return listName;
                     }
                 }
             }
         } catch (Exception e) {
-            System.err.println("Fehler beim XML-Parsing: " + e.getMessage());
+            log.warn("Unable to read list name, using default name", e);
         }
         return "Unbekannte Liste";
     }
