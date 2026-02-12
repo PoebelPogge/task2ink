@@ -1,11 +1,15 @@
 import json
 import sys
 from escpos.printer import Usb
+from flask import Flask, request, jsonify
+from datetime import datetime
 
-def print_todo(payload):
-    data = json.loads(payload)
+app = Flask(__name__)
+
+def print_todo(data):
     name = data.get('listName','Unknown')
     summary = data.get('summary','')
+    due_date = datetime.fromisoformat(data.get('dueDate',''))
 
     try:
         p = Usb(0x0519, 0x000b)
@@ -24,17 +28,30 @@ def print_todo(payload):
         p.set(bold=False)
         p.qr("https://dein-kalender-link.de", size=10, center=True)
         p.text("================================\n")
-        p.text("Gedruckt am: 03.02.2026\n")
+        p.text("Gedruckt am: " + due_date.strftime("%d.%m.%Y %H:%M") + "\n")
         p.text("================================\n")
         p.cut()
     except Exception as e:
         print(f"Druckfehler: {e}", file=sys.stderr)
         sys.exit(1)
 
-if __name__ == "__main__":
-    # Wenn ein Argument übergeben wurde (von Java), drucken wir es
-    if len(sys.argv) > 1:
-        payload = sys.argv[1]
-        print_todo(payload)
+@app.route('/print', methods=['POST'])
+def handle_print():
+    # 1. Daten vom Request holen
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Kein JSON empfangen"}), 400
+
+    # 2. Drucken ausführen
+    success, message = print_todo(data)
+
+    # 3. Ergebnis zurückgeben
+    if success:
+        return jsonify({"status": "success", "message": message}), 200
     else:
-        print("Kein Titel zum Drucken empfangen.")
+        # Wenn der Drucker nicht gefunden wird, schicken wir einen 500er Fehler
+        return jsonify({"status": "error", "message": message}), 500
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5001)

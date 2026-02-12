@@ -1,0 +1,14 @@
+###
+# curl -X POST http://localhost:5000/print
+#     -H "Content-Type: application/json"
+#     -d '{"listName": "Test-Liste", "summary": "Hallo vom Terminal!"}'
+POST http://localhost:5001/print
+Content-Type: application/json
+
+{
+  "listName": "Test-Liste",
+  "summary": "Hallo vom Terminal!",
+  "dueDate": "2026-02-12T13:27:22.123+01:00"
+}
+
+###
