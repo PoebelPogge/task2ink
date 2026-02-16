@@ -1,0 +1,51 @@
+name: Docker Build and Push
+
+on:
+  push:
+    branches: [ "main" ] # Trigger bei Push auf den Main-Branch
+
+env:
+  REGISTRY: ghcr.io
+  # Nutzt deinen GitHub-Nutzernamen und den Repository-Namen in Kleinbuchstaben
+  IMAGE_NAME: task2ink
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Zwingend erforderlich für den Push in die Registry
+
+    strategy:
+      matrix:
+        # Hier definierst du alle deine Services
+        include:
+          - context: ./backend
+            image: ghcr.io/${{ github.repository }}/task2ink-backend
+          - context: ./frontend
+            image: ghcr.io/${{ github.repository }}/task2ink-frontend
+          - context: ./tools/printer-service
+            image: ghcr.io/${{ github.repository }}/task2ink-printer
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ matrix.image }}:latest, ${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
