@@ -22,11 +22,11 @@ jobs:
         # Hier definierst du alle deine Services
         include:
           - context: ./backend
-            image: ghcr.io/${{ env.REPOSITORY }}/task2ink-backend
+            image: ghcr.io/poebelpogge/task2ink/task2ink-backend
           - context: ./frontend
-            image: ghcr.io/${{ env.REPOSITORY }}/task2ink-frontend
+            image: ghcr.io/poebelpogge/task2ink/task2ink-frontend
           - context: ./tools/printer-service
-            image: ghcr.io/${{ env.REPOSITORY }}/task2ink-printer
+            image: ghcr.io/poebelpogge/task2ink/task2ink-printer
 
     steps:
       - name: Checkout repository
