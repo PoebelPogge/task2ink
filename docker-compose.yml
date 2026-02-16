@@ -1,4 +1,19 @@
 services:
+  backend:
+    image: task2ink-backend:latest
+    volumes:
+      - ./config.json:/app/config.json:ro
+    environment:
+      - PRINTER_URL=http://printer-service:5001
+    ports:
+      - "8080:8080"
+    depends_on:
+      - printer-service
+  frontend:
+    image: task2ink-frontend:latest
+    ports:
+      - "4200:80"
+    restart: unless-stopped
   printer-service:
     image: task2ink-printer:latest
     privileged: true  # Wichtig für den direkten Hardware-Zugriff

@@ -3,6 +3,7 @@ package pge.solutions.task2ink.services;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import net.fortuna.ical4j.model.component.VToDo;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
@@ -19,6 +20,9 @@ import java.util.concurrent.Executors;
 @Slf4j
 public class PrinterProcessService {
 
+    @Value("${printer.service.url}")
+    private String printerUrl;
+
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ToDoMapper toDoMapper;
 
@@ -33,7 +37,7 @@ public class PrinterProcessService {
 
         PrintableToDo printableToDo = toDoMapper.toPrint(todo, listName);
 
-        String url = "http://localhost:5001/print";
+        String url = printerUrl + "/print";
         ResponseEntity<PrinterResponse> response = restTemplate.postForEntity(url, printableToDo, PrinterResponse.class);
 
         if(!HttpStatus.OK.equals(response.getStatusCode())){

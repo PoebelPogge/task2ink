@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Client } from '@stomp/stompjs';
 import { BehaviorSubject } from 'rxjs';
 import {ApiToDo} from '../models/todo.model';
+import { environment} from '../../environments/environment';
 
 
 @Injectable({ providedIn: 'root' })
@@ -12,7 +13,7 @@ export class TodoService {
 
   constructor() {
     this.stompClient = new Client({
-      brokerURL: 'ws://localhost:8080/ws', // Dein Pi-Endpunkt (ohne /ws-tasks Fallback)
+      brokerURL: environment.wsUrl, // Dein Pi-Endpunkt (ohne /ws-tasks Fallback)
       onConnect: () => {
         console.log('Verbunden mit dem Backend!');
         this.subscribeToList(1); // Testweise Liste ID 1 abonnieren
