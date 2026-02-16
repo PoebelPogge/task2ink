@@ -6,6 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  REPOSITORY: poebelpogge/task2ink
   # Nutzt deinen GitHub-Nutzernamen und den Repository-Namen in Kleinbuchstaben
   IMAGE_NAME: task2ink
 
@@ -21,11 +22,11 @@ jobs:
         # Hier definierst du alle deine Services
         include:
           - context: ./backend
-            image: ghcr.io/${{ github.repository }}/task2ink-backend
+            image: ghcr.io/${{ env.REPOSITORY }}/task2ink-backend
           - context: ./frontend
-            image: ghcr.io/${{ github.repository }}/task2ink-frontend
+            image: ghcr.io/${{ env.REPOSITORY }}/task2ink-frontend
           - context: ./tools/printer-service
-            image: ghcr.io/${{ github.repository }}/task2ink-printer
+            image: ghcr.io/${{ env.REPOSITORY }}/task2ink-printer
 
     steps:
       - name: Checkout repository
