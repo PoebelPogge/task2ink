@@ -1,0 +1,9 @@
+services:
+  printer-service:
+    image: task2ink-printer:latest
+    privileged: true  # Wichtig für den direkten Hardware-Zugriff
+    devices:
+      - "/dev/bus/usb:/dev/bus/usb"
+    ports:
+      - "5001:5001"
+    restart: unless-stopped

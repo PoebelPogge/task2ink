@@ -5,4 +5,5 @@
 # Python
 __pycache__/
 *.py[cod]
-/tools/printer-interface/venv/
+/tools/printer-service/venv/
+/docker-compose.override.yml
