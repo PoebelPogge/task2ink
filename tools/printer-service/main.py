@@ -5,6 +5,8 @@ from datetime import datetime
 
 app = Flask(__name__)
 
+p = None
+
 logging.basicConfig(
     level=logging.DEBUG,  # Das kleinste Level, das noch angezeigt wird
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -26,7 +28,6 @@ def print_todo(data):
         display_date = due_date.strftime("%d.%m.%Y %H:%M")
 
     try:
-        p = Usb(0x0519, 0x000b)
         p.profile.media_width_pixel = 384
         p.set(align='center', font='a', width=1, height=1)
         p.set(bold=True)
@@ -73,4 +74,5 @@ def handle_print():
         return jsonify({"status": "error", "message": message}), 500
 
 if __name__ == "__main__":
+    p = Usb(0x0519, 0x000b)
     app.run(host='0.0.0.0', port=5001)
