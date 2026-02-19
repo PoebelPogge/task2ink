@@ -60,9 +60,9 @@ public class ToDoService {
         messagingTemplate.convertAndSend(destination, apiTodos);
     }
 
-    public void completeTodo(String uid) throws Exception {
+    public ApiToDo completeTodo(String uid) throws Exception {
 
         CalDavCredential credentials = appConfig.calendars().getFirst(); //TODO! Richtigen Kalender auswählen
-        calDavService.uploadToCalDav(credentials, uid);
+        return calDavService.uploadToCalDav(credentials, uid);
     }
 }

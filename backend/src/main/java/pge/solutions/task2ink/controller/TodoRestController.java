@@ -26,7 +26,7 @@ public class TodoRestController {
     @GetMapping("/{uid}/complete")
     public ResponseEntity<String> markAsComplete(@PathVariable String uid, @RequestHeader(value = "User-Agent") String userAgent) {
         try {
-            toDoService.completeTodo(uid);
+            var result = toDoService.completeTodo(uid);
             if(userAgent.contains("ESP32CAM-Tool")){
                 return ResponseEntity.ok("DONE");
             } else {
@@ -34,7 +34,7 @@ public class TodoRestController {
 
                 Map<String, String> data = new HashMap<>();
                 data.put("uid", uid);
-                data.put("summary", "foobar123");
+                data.put("summary", result.summary());
 
                 String body = Mustache.compiler().compile(template).execute(data);
 

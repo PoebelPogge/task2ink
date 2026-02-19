@@ -15,9 +15,11 @@ import net.fortuna.ical4j.model.property.Completed;
 import net.fortuna.ical4j.model.property.PercentComplete;
 import net.fortuna.ical4j.model.property.Status;
 import org.springframework.stereotype.Service;
+import pge.solutions.task2ink.dto.ApiToDo;
 import pge.solutions.task2ink.dto.CalDavCredential;
 import pge.solutions.task2ink.dto.TodoList;
 import pge.solutions.task2ink.exceptions.CalenderConnectionException;
+import pge.solutions.task2ink.mapper.ToDoMapper;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -32,8 +34,13 @@ public class CalDavService {
 
     private String listname = "";
 
+    private final ToDoMapper toDoMapper;
 
-    public void uploadToCalDav(CalDavCredential credentials, String uid) throws Exception {
+    public CalDavService(ToDoMapper toDoMapper) {
+        this.toDoMapper = toDoMapper;
+    }
+
+    public ApiToDo uploadToCalDav(CalDavCredential credentials, String uid) throws Exception {
         Sardine sardine = SardineFactory.begin(credentials.username(), credentials.password());
 
         String baseUrl = credentials.url();
@@ -69,10 +76,12 @@ public class CalDavService {
         byte[] data = calendar.toString().getBytes(StandardCharsets.UTF_8);
         sardine.put(taskUrl, new ByteArrayInputStream(data), headers);
         log.info("Task with summary: [{}], and uid: {} was marked as complete", target.getSummary().getValue(), target.getUid().getValue());
+
+        return toDoMapper.toApi(target);
     }
 
     public TodoList getOpenTasks(CalDavCredential credential){
-        Calendar calendar = null;
+        Calendar calendar;
         try {
             calendar = this.connect(credential);
         } catch (CalenderConnectionException e) {
