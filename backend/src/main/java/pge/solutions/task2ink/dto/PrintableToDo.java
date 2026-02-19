@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.OffsetDateTime;
 
 public record PrintableToDo(
-        String id,
+        String uid,
         String listName,
         String summary,
         String description,

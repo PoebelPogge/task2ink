@@ -21,6 +21,6 @@ public class PrinterTodoEventHandler {
         var todo = newTodoEvent.toDo();
         var name = newTodoEvent.listName();
         printerProcessService.printTask(name, todo);
-        log.info("Going to print todo with id: {} and content '{}' via python.", todo.getUid().getValue(), todo.getSummary().getValue());
+        log.info("Going to print todo with uid: {} and content '{}' via python.", todo.getUid().getValue(), todo.getSummary().getValue());
     }
 }

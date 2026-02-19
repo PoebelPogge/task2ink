@@ -7,10 +7,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import pge.solutions.task2ink.dto.ApiToDo;
-import pge.solutions.task2ink.dto.AppConfig;
-import pge.solutions.task2ink.dto.NewTodoEvent;
-import pge.solutions.task2ink.dto.TodoList;
+import pge.solutions.task2ink.dto.*;
 import pge.solutions.task2ink.mapper.ToDoMapper;
 
 import java.util.HashMap;
@@ -40,7 +37,7 @@ public class ToDoService {
     @Scheduled(fixedRate = 5000)
     public void fetchTodos(){
         for (int i = 0; i < appConfig.calendars().size(); i++) {
-            var todoList = calDavService.connect(appConfig.calendars().get(i));
+            var todoList = calDavService.getOpenTasks(appConfig.calendars().get(i));
             var oldTodos = contents.get(i);
             if (null == oldTodos){
                 log.info("Got {} Todos initial from Server", todoList.todos().size());
@@ -61,5 +58,17 @@ public class ToDoService {
         List<ApiToDo> apiTodos = contents.get(0).todos().stream().map(toDoMapper::toApi).toList();
         String destination = "/topic/todos/1";
         messagingTemplate.convertAndSend(destination, apiTodos);
+    }
+
+    public void completeTodo(String uid){
+
+        CalDavCredential credentials = appConfig.calendars().getFirst(); //TODO! Richtigen Kalender auswählen
+
+        try {
+            calDavService.uploadToCalDav(credentials, uid);
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

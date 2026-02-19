@@ -16,6 +16,7 @@ logging.basicConfig(
 app.logger.setLevel(logging.DEBUG)
 
 def print_todo(data):
+    uid = data.get('uid')
     name = data.get('listName','Unknown')
     summary = data.get('summary','')
 
@@ -41,10 +42,10 @@ def print_todo(data):
         p.set(bold=True)
         p.text("Scan when done:\n")
         p.set(bold=False)
-        p.qr("https://dein-kalender-link.de", size=10, center=True)
+        p.qr(f"http://192.168.100.200:8080/api/todos/{uid}/complete", size=10, center=True)
         if due_date is not None:
             p.text("================================\n")
-            p.text("Gedruckt am: " + display_date + "\n")
+            p.text("Fällig am: " + display_date + "\n")
             p.text("================================\n")
         p.cut()
         logging.info("Todo was printed successfully!")

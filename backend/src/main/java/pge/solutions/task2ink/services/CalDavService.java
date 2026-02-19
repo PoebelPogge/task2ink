@@ -1,5 +1,6 @@
 package pge.solutions.task2ink.services;
 
+import com.github.sardine.DavResource;
 import com.github.sardine.Sardine;
 import com.github.sardine.SardineFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -7,31 +8,23 @@ import net.fortuna.ical4j.data.CalendarBuilder;
 import net.fortuna.ical4j.data.ParserException;
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.DateTime;
+import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VToDo;
 import net.fortuna.ical4j.model.property.Completed;
+import net.fortuna.ical4j.model.property.PercentComplete;
+import net.fortuna.ical4j.model.property.Status;
 import org.springframework.stereotype.Service;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
 import pge.solutions.task2ink.dto.CalDavCredential;
 import pge.solutions.task2ink.dto.TodoList;
+import pge.solutions.task2ink.exceptions.CalenderConnectionException;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -39,124 +32,87 @@ public class CalDavService {
 
     private String listname = "";
 
-    private void getListName(CalDavCredential credential) throws IOException, InterruptedException {
-        String listUrl = credential.url();
-        String collectionUrl = listUrl.endsWith(".ics") ? listUrl.substring(0, listUrl.lastIndexOf("/")) : listUrl;
 
-        String auth = credential.username() + ":" + credential.password();
-        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+    public void uploadToCalDav(CalDavCredential credentials, String uid) throws Exception {
+        Sardine sardine = SardineFactory.begin(credentials.username(), credentials.password());
 
-        String xmlBody = """
-            <?xml version="1.0" encoding="utf-8" ?>
-            <D:propfind xmlns:D="DAV:">
-              <D:prop><D:displayname/></D:prop>
-            </D:propfind>
-            """;
+        String baseUrl = credentials.url();
 
-        HttpResponse<String> response;
-        try (HttpClient client = HttpClient.newHttpClient()) {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(collectionUrl))
-                    .header("Authorization", "Basic " + encodedAuth)
-                    .header("Content-Type", "text/xml")
-                    .header("Depth", "1")
-                    .method("PROPFIND", HttpRequest.BodyPublishers.ofString(xmlBody))
-                    .build();
+        sardine.enablePreemptiveAuthentication(baseUrl + ".ics");
 
-            response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        }
-        String xmlResponse = response.body();
+        // 2. Die spezifische URL für dieses eine Todo
+        String taskUrl = baseUrl + String.format("/%s.ics", uid);
 
-        String calenderID = extractWithRegex(credential.url());
-        this.listname = getDisplayNameForUuid(xmlResponse, calenderID);
+        // 3. ETag von der SPEZIFISCHEN Datei holen
+        List<DavResource> resources = sardine.list(taskUrl);
+        if (resources.isEmpty()) throw new IOException("Todo nicht gefunden");
+        String etag = resources.getFirst().getEtag();
+        if (!etag.startsWith("\"")) etag = "\"" + etag + "\"";
+
+        InputStream is = sardine.get(taskUrl);
+        Calendar calendar = new CalendarBuilder().build(is);
+        VToDo target = calendar.getComponent(Component.VTODO);
+
+        var props = target.getProperties();
+        props.removeAll(props.getProperties(Property.STATUS));
+        props.add(new Status("COMPLETED"));
+        props.removeAll(props.getProperties(Property.PERCENT_COMPLETE));
+        props.add(new PercentComplete(100));
+        props.removeAll(props.getProperties(Property.COMPLETED));
+        props.add(new Completed(new DateTime(true)));
+
+        // 5. PUT auf die taskUrl (nicht auf die Sammel-ICS)
+        Map<String, String> headers = new HashMap<>();
+        headers.put("If-Match", etag);
+        headers.put("Content-Type", "text/calendar; charset=utf-8");
+
+        byte[] data = calendar.toString().getBytes(StandardCharsets.UTF_8);
+        sardine.put(taskUrl, new ByteArrayInputStream(data), headers);
+        log.info("Task with summary: [{}], and uid: {} was marked as complete", target.getSummary().getValue(), target.getUid().getValue());
     }
 
-    private String extractWithRegex(String url) {
-        // Muster für eine klassische UUID
-        Pattern uuidPattern = Pattern.compile(".*/([0-9a-zA-Z-]*).+");
-        Matcher matcher = uuidPattern.matcher(url);
-
-        if (matcher.find()) {
-            return matcher.group(1);
-        }
-        return null;
-    }
-
-    private String getDisplayNameForUuid(String xmlResponse, String targetId) {
+    public TodoList getOpenTasks(CalDavCredential credential){
+        Calendar calendar = null;
         try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setNamespaceAware(true);
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document doc = builder.parse(new InputSource(new StringReader(xmlResponse)));
-
-            // Wir holen alle "response" Elemente
-            NodeList responses = doc.getElementsByTagNameNS("DAV:", "response");
-
-            for (int i = 0; i < responses.getLength(); i++) {
-                Element response = (Element) responses.item(i);
-
-                // 1. Die URL (href) dieses Blocks prüfen
-                String href = response.getElementsByTagNameNS("DAV:", "href")
-                        .item(0).getTextContent();
-
-                // Wir prüfen, ob die gesuchte UUID in der URL vorkommt
-                // Und wir nehmen nur den Eintrag OHNE .ics/.xml Endung für den sauberen Namen
-                if (href.contains(targetId) && !href.endsWith(".ics") && !href.endsWith(".xml")) {
-
-                    // 2. Den Displaynamen aus diesem spezifischen Block extrahieren
-                    NodeList displayNames = response.getElementsByTagNameNS("DAV:", "displayname");
-                    if (displayNames.getLength() > 0) {
-                        String listName = displayNames.item(0).getTextContent();
-                        log.info("Got list with name: " + listName);
-                        return listName;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Unable to read list name, using default name", e);
-        }
-        return "Unbekannte Liste";
-    }
-
-    public TodoList connect(CalDavCredential credential){
-        if("".equals(this.listname)){
-            this.listname = "Todo List";
-            try {
-                getListName(credential);
-            } catch (IOException | InterruptedException e) {
-                log.warn("Unable to get list name, continuing with default");
-            }
-        }
-
-        try{
-            Sardine sardine = SardineFactory.begin(credential.username(), credential.password());
-            if(sardine.exists(credential.url())){
-                InputStream is = sardine.get(credential.url());
-
-                CalendarBuilder builder = new CalendarBuilder();
-                Calendar calendar = builder.build(is);
-                List<VToDo> todos = calendar.getComponents(Component.VTODO);
-
-                List<VToDo> filteredTodos = todos.stream()
-                        .filter(todo -> {
-                            Completed completed = todo.getDateCompleted();
-                            if(null == completed){
-                                return true;
-                            }
-
-                            Instant completedAt = completed.getDate().toInstant();
-                            return completedAt.isAfter(Instant.now());
-                        }).toList();
-
-                log.debug("Fetched {} open Tasks from CalDav Server", filteredTodos.size());
-                return new TodoList(this.listname, filteredTodos);
-            } else {
-                log.warn("Could not fetch any information from CalDav Server");
-                return new TodoList(this.listname, Collections.emptyList());
-            }
-        } catch (IOException | ParserException e) {
-            log.error("Unable to read from CalDav Server", e);
+            calendar = this.connect(credential);
+        } catch (CalenderConnectionException e) {
+            log.error("Unable to get any Todos from CalDav Server");
             return new TodoList(this.listname, Collections.emptyList());
         }
+
+        List<VToDo> todos = calendar.getComponents(Component.VTODO);
+
+        List<VToDo> filteredTodos = todos.stream()
+                .filter(todo -> {
+                    Completed completed = todo.getDateCompleted();
+                    if(null == completed){
+                        return true;
+                    }
+
+                    Instant completedAt = completed.getDate().toInstant();
+                    return completedAt.isAfter(Instant.now());
+                }).toList();
+        log.debug("Fetched {} open Tasks from CalDav Server", filteredTodos.size());
+        return new TodoList(this.listname, filteredTodos);
+    }
+
+    public Calendar connect(CalDavCredential credential) throws CalenderConnectionException {
+        try{
+            Sardine sardine = SardineFactory.begin(credential.username(), credential.password());
+            String baseURL = credential.url() + ".ics";
+            if(sardine.exists(baseURL)){
+                List<DavResource> resources = sardine.list(baseURL);
+                this.listname = resources.getFirst().getDisplayName();
+
+                InputStream is = sardine.get(baseURL);
+
+                CalendarBuilder builder = new CalendarBuilder();
+
+                return builder.build(is);
+            }
+        } catch (IOException | ParserException e) {
+            throw new CalenderConnectionException(credential.url());
+        }
+        throw new CalenderConnectionException(credential.url());
     }
 }
